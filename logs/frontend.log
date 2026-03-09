@@ -1,0 +1,15 @@
+
+> ai-client@0.1.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 333 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+2:06:10 PM [vite] hmr update /src/components/ParamDrawer.jsx
+2:06:24 PM [vite] hmr update /src/components/InputBar.jsx
+2:06:26 PM [vite] hmr update /src/components/ChatPanel.jsx
+2:11:25 PM [vite] hmr update /src/components/ParamDrawer.jsx
+2:19:14 PM [vite] hmr update /src/components/ParamDrawer.jsx
+2:21:05 PM [vite] hmr update /src/components/InputBar.jsx
