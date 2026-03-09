@@ -9,9 +9,14 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_PID="$ROOT/.backend.pid"
 FRONTEND_PID="$ROOT/.frontend.pid"
 
-# ← 改成你的 conda 环境中的 Python 路径
-PYTHON="/Users/dongyu/miniconda3/envs/chatbot/bin/python"
-UVICORN="/Users/dongyu/miniconda3/envs/chatbot/bin/uvicorn"
+# 自动检测当前环境的命令
+PYTHON=$(command -v python || command -v python3)
+UVICORN=$(command -v uvicorn)
+
+if [ -z "$UVICORN" ]; then
+  echo "⚠️  未找到 uvicorn。请确保你已经激活了对应的 Conda 或 Python 虚拟环境 (例如: conda activate chatbot)"
+  exit 1
+fi
 
 is_running() {
   local pidfile=$1
