@@ -1,0 +1,39 @@
+{
+    "providers": {
+        "anthropic": {
+            "api_key": "YOUR_API_KEY_HERE",
+            "base_url": "https://api.linkapi.ai/v1",
+            "models": [
+                "claude-opus-4-6-thinking"
+            ]
+        },
+        "google": {
+            "api_key": "YOUR_API_KEY_HERE",
+            "base_url": "https://api.linkapi.ai/v1",
+            "models": [
+                "gemini-3.1-pro-preview"
+            ]
+        },
+        "openai": {
+            "api_key": "YOUR_API_KEY_HERE",
+            "base_url": "https://api.deepseek.com/v1",
+            "models": [
+                "deepseek-reasoner"
+            ]
+        }
+    },
+    "default_provider": "anthropic",
+    "default_model": "claude-opus-4-6-thinking",
+    "global_system_prompt": "",
+    "default_params": {
+        "max_tokens": 100000,
+        "temperature": 1.0,
+        "top_p": 1.0,
+        "frequency_penalty": 0.0
+    },
+    "context_strategy": "rounds",
+    "context_rounds": 10,
+    "context_token_threshold": 8000,
+    "max_single_message_tokens": 30000,
+    "max_total_tokens": 60000
+}
