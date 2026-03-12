@@ -2,54 +2,52 @@
 
 一个现代化、支持多模型流式对话的本地 AI 客户端。由 FastAPI 提供后端支持，Vite + React 提供前端界面。
 
-## 特性
+## 核心特性
 
-- **多模型支持**：无缝对接 Anthropic (Claude)、OpenAI (GPT) 和 Google (Gemini) 等大语言模型。
-- **多模态与文件解析**：支持上传图片、PDF、Word 甚至 Markdown 文档，由后端解析后交由模型处理。
-- **灵活的参数调优**：每个对话都可以独立设置其专属的系统提示词（System Prompt）、Token阈值、Top P 和 Temperature，支持防抖自动保存。
-- **深度思考渲染**：(WIP) 支持良好的 `<think>` 标签思维链解析。
-- **一键运行**：提供通用的本地服务启停脚本，化繁为简。
+- **🚀 极致流式性能**：采用组件级缓存（`React.memo`）与防抖滚动技术，即使在每秒输出上千字的极端任务下，历史记录滑动依然丝滑平顺。
+- **🛡️ 零丢失稳定性**：
+  - **断点自动保存**：后端引入 `finally` 保护机制，即使网络中断或手动关闭页面，已生成的回复片段也会 100% 存入数据库。
+  - **智能参数纠偏**：自动识别模型物理极限（如 Claude 的 32k/4k 限制），防止因意外填入过大 `max_tokens` 导致代理服务崩溃。
+  - **健壮的 SSE 解析**：重构了前端流解析算法，完美处理分片、粘包等网络异常问题。
+- **🧠 深度思考支持**：原生支持 DeepSeek-R1 / 豆包-Pro 等模型的 `Reasoning` 内容提取，支持可视化折叠/展开“深度思考”过程。
+- **🖇️ 多对话独立并发**：对话状态（正在生成、文本缓冲区、思考动画）完全基于 Session ID 隔离。你可以在 A 对话生成长文的同时，流畅地操作 B 对话或切换不同任务。
+- **📁 全面多模态**：支持上传图片、PDF、Word 以及 Markdown 文档，支持长文上下文自动剪裁。
+- **⚙️ 精细化调优**：每个会话独立配置 System Prompt、Temperature、Top P 及多轮对话窗口。
 
 ## 安装与快速启动
 
-### 1. 前置要求
+### 1. 环境准备
+- **Node.js**: `v18+`
+- **Python**: `3.9+` (推荐使用 Conda)
 
-在运行前，请确保你的电脑上已经安装了：
-- **Node.js**: `v18+` (用于前端)
-- **Python**: `3.9+` (用于后端)
+### 2. 配置配置
+1. 复制或直接通过前端设置界面填入 API 信息。
+2. 配置存储于本地 `config.json`。
 
-### 2. 配置环境变量
+### 3. 一键启动
+本项目封装了启停脚本 `start.sh`，自动管理前后端进程：
 
-你需要通过 `config.json` 来配置你的 API Keys。项目中默认有一个示例，你可以通过前端的**设置中心 (⚙️)** 直接填入并保存：
-- Anthropic API Key
-- OpenAI API Key
-- Google Gemini API Key
-
-### 3. 一键启动服务
-
-本项目提供了一个在 macOS/Linux 下通用的一键启停脚本 `start.sh`，他会自动寻找你当前环境的 Python 解析器。
-
-运行前，请**确保激活了带有所有依赖的 conda/python 虚拟环境**：
 ```bash
-# 1. 激活你的 Python 环境 (例如: conda activate chatbot)
-# 2. 安装后端依赖 (仅首次运行需要)
+# 激活环境后安装依赖
 pip install -r backend/requirements.txt
 
-# 3. 运行一键脚本启动前后端
+# 启动服务
 ./start.sh start
 ```
 
-启动成功后：
-- 前端页面：[http://localhost:5173](http://localhost:5173)
-- 后端文档：[http://localhost:8000/docs](http://localhost:8000/docs)
+- **访问地址**：[http://localhost:5173](http://localhost:5173)
 
-要**停止服务**，请运行：
+### 4. 常用维护
 ```bash
-./start.sh stop
+./start.sh stop     # 停止服务
+./start.sh restart  # 重启服务
 ```
 
-## 技术栈
+## 技术架构
 
-- **前端**：React, Vite, Zustand, React-Markdown
-- **后端**：Python, FastAPI, Uvicorn, Pydantic
-- **存储**：基于本地文件的 JSON 沉淀式存储 (`/sessions` 与 `/config.json`)
+- **前端架构**：React 18 + Vite + Zustand (状态分片管理适配多对话)。
+- **后端架构**：FastAPI + 统一 OpenAI 兼容层（Anthropic 现已通过桥接模式支持 OpenAI 协议，大幅提升流式稳定性）。
+- **存储方案**：本地 JSON 沉淀式存储，便于数据迁移与直接编辑。
+
+---
+*注：本地运行请确保 API 中转站或直连网络能够稳定支持长连接流式输出。*
