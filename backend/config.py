@@ -26,13 +26,18 @@ DEFAULT_CONFIG = {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
             "models": ["gpt-4o", "gpt-4o-mini"]
+        },
+        "doubao": {
+            "api_key": "",
+            "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+            "models": ["ep-20240618051630-xxxxx"]
         }
     },
     "default_provider": "anthropic",
     "default_model": "claude-sonnet-4-5",
     "global_system_prompt": "",
     "default_params": {
-        "max_tokens": 8096,
+        "max_tokens": 100000,
         "temperature": 1.0,
         "top_p": 1.0,
         "frequency_penalty": 0.0

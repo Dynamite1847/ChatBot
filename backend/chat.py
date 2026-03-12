@@ -268,19 +268,45 @@ async def stream_chat_response(
                 }
                 yield f"data: {json.dumps(payload)}\n\n"
 
+    except asyncio.CancelledError:
+        logger.warning("Stream cancelled by client (asyncio.CancelledError). Saving partial output...")
+        full_text = "".join(full_response)
+        if full_text:
+            try:
+                append_message(
+                    session_id, "assistant", full_text,
+                    usage=usage, model=model, provider=provider_name
+                )
+            except Exception as e:
+                logger.error(f"Failed to persist partial message on cancel: {e}", exc_info=True)
+        raise
+
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error in stream_chat_response: {error_msg}", exc_info=True)
         yield f"data: {json.dumps({'error': error_msg})}\n\n"
-        return
-
-    # Persist assistant response
-    full_text = "".join(full_response)
-    if full_text:
-        append_message(
-            session_id, "assistant", full_text,
-            usage=usage, model=model, provider=provider_name
-        )
+        # On normal exception, we also want to save partial text
+        full_text = "".join(full_response)
+        if full_text:
+            try:
+                append_message(
+                    session_id, "assistant", full_text,
+                    usage=usage, model=model, provider=provider_name
+                )
+            except Exception as persist_e:
+                logger.error(f"Failed to persist partial message on error: {persist_e}", exc_info=True)
+                
+    else:
+        # On clean exit without exceptions
+        full_text = "".join(full_response)
+        if full_text:
+            try:
+                append_message(
+                    session_id, "assistant", full_text,
+                    usage=usage, model=model, provider=provider_name
+                )
+            except Exception as e:
+                logger.error(f"Failed to persist complete message: {e}", exc_info=True)
 
     # Auto-title: on first message, use DeepSeek to generate a concise title
     if is_first_message and full_text:

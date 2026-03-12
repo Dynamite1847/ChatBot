@@ -28,14 +28,21 @@ const useStore = create((set, get) => ({
     },
     setParams: (update) => set(s => ({ params: { ...s.params, ...update } })),
 
-    // Streaming state
-    isStreaming: false,
-    setIsStreaming: (v) => set({ isStreaming: v }),
-    isThinking: false,
-    setIsThinking: (v) => set({ isThinking: v }),
-    streamingText: '',
-    setStreamingText: (t) => set({ streamingText: t }),
-    appendStreamingText: (delta) => set(s => ({ streamingText: s.streamingText + delta })),
+    // Streaming state (keyed by sessionId)
+    isStreamingMap: {},
+    setIsStreaming: (id, v) => set(s => ({ isStreamingMap: { ...s.isStreamingMap, [id]: v } })),
+    
+    isThinkingMap: {},
+    setIsThinking: (id, v) => set(s => ({ isThinkingMap: { ...s.isThinkingMap, [id]: v } })),
+    
+    streamingTextMap: {},
+    setStreamingText: (id, t) => set(s => ({ streamingTextMap: { ...s.streamingTextMap, [id]: t } })),
+    appendStreamingText: (id, delta) => set(s => ({ 
+        streamingTextMap: { 
+            ...s.streamingTextMap, 
+            [id]: (s.streamingTextMap[id] || '') + delta 
+        } 
+    })),
 
     // Token tracking
     promptTokenEstimate: 0,

@@ -6,8 +6,8 @@ export default function InputBar() {
     const {
         activeSessionId, activeSession, setActiveSession,
         params, config,
-        isStreaming, setIsStreaming, setIsThinking,
-        streamingText, setStreamingText, appendStreamingText,
+        isStreamingMap, setIsStreaming, setIsThinking,
+        setStreamingText, appendStreamingText,
         pendingFiles, addPendingFile, removePendingFile, setPendingFiles,
         promptTokenEstimate, setPromptTokenEstimate,
         setLastUsage, addToast,
@@ -165,43 +165,48 @@ export default function InputBar() {
         setPromptTokenEstimate(0)
         if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
 
-        setIsStreaming(true)
-        setStreamingText('')
-        setIsThinking(false)
+        const currentSessionId = activeSessionId; // Capture for closure
+        setIsStreaming(currentSessionId, true)
+        setStreamingText(currentSessionId, '')
+        setIsThinking(currentSessionId, false)
 
         abortRef.current = streamChat(payload, {
             onDelta: (delta) => {
-                setIsThinking(false)
-                appendStreamingText(delta)
+                setIsThinking(currentSessionId, false)
+                appendStreamingText(currentSessionId, delta)
             },
             onStatus: (status) => {
-                if (status === 'thinking') setIsThinking(true)
+                if (status === 'thinking') setIsThinking(currentSessionId, true)
             },
             onUsage: (usage) => setLastUsage(usage),
             onFinish: async () => {
-                setIsStreaming(false)
-                setIsThinking(false)
+                setIsStreaming(currentSessionId, false)
+                setIsThinking(currentSessionId, false)
                 // Reload session to get persisted messages
                 try {
-                    const updated = await fetchSession(activeSessionId)
-                    setActiveSession(updated)
+                    const updated = await fetchSession(currentSessionId)
+                    if (useStore.getState().activeSessionId === currentSessionId) {
+                        setActiveSession(updated)
+                    }
                 } catch { }
-                setStreamingText('')
+                setStreamingText(currentSessionId, '')
                 // Delayed reload to pick up auto-generated title from DeepSeek
                 setTimeout(async () => {
                     try {
                         const sessions = await fetchSessions()
                         setSessions(sessions)
                         // Also refresh active session to get updated name
-                        const fresh = await fetchSession(activeSessionId)
-                        setActiveSession(fresh)
+                        if (useStore.getState().activeSessionId === currentSessionId) {
+                            const fresh = await fetchSession(currentSessionId)
+                            setActiveSession(fresh)
+                        }
                     } catch { }
                 }, 3000)
             },
             onError: (err) => {
-                setIsStreaming(false)
-                setIsThinking(false)
-                setStreamingText('')
+                setIsStreaming(currentSessionId, false)
+                setIsThinking(currentSessionId, false)
+                setStreamingText(currentSessionId, '')
                 addToast('错误: ' + err, 'error')
             }
         })
@@ -209,9 +214,14 @@ export default function InputBar() {
 
     const handleStop = () => {
         if (abortRef.current) abortRef.current.abort()
-        setIsStreaming(false)
-        setStreamingText('')
+        if (activeSessionId) {
+            setIsStreaming(activeSessionId, false)
+            setStreamingText(activeSessionId, '')
+            setIsThinking(activeSessionId, false)
+        }
     }
+
+    const isStreaming = activeSessionId ? (isStreamingMap[activeSessionId] || false) : false;
 
     return (
         <div

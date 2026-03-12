@@ -102,22 +102,53 @@ export function streamChat(payload, { onDelta, onStatus, onUsage, onFinish, onEr
             const { done, value } = await reader.read()
             if (done) break
             buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop()
+            
+            // Extract complete data chunks separated by \n\n
+            let boundary = buffer.indexOf('\n\n')
+            while (boundary !== -1) {
+                const chunkStr = buffer.slice(0, boundary).trim()
+                buffer = buffer.slice(boundary + 2)
+                boundary = buffer.indexOf('\n\n')
 
-            for (const line of lines) {
+                if (!chunkStr) continue
+
+                // Some proxies might send multiple data lines in one chunk, split them
+                const lines = chunkStr.split('\n')
+                for (let line of lines) {
+                    line = line.trim()
+                    if (!line.startsWith('data: ')) continue
+                    
+                    const raw = line.slice(6).trim()
+                    if (raw === '[DONE]') { onFinish(); return }
+                    
+                    try {
+                        const parsed = JSON.parse(raw)
+                        if (parsed.error) { onError(parsed.error); return }
+                        if (parsed.status && onStatus) onStatus(parsed.status)
+                        if (parsed.delta !== undefined) onDelta(parsed.delta)
+                        if (parsed.usage) onUsage(parsed.usage)
+                    } catch (e) {
+                        console.error('JSON parse error out of chunk:', raw, e)
+                    }
+                }
+            }
+        }
+        
+        // Handle any trailing data that didn't have \n\n at the very end
+        if (buffer.trim()) {
+            const lines = buffer.trim().split('\n')
+            for (let line of lines) {
+                line = line.trim()
                 if (!line.startsWith('data: ')) continue
                 const raw = line.slice(6).trim()
                 if (raw === '[DONE]') { onFinish(); return }
                 try {
-                    const chunk = JSON.parse(raw)
-                    if (chunk.error) { onError(chunk.error); return }
-                    if (chunk.status && onStatus) onStatus(chunk.status)
-                    if (chunk.delta) onDelta(chunk.delta)
-                    if (chunk.usage) onUsage(chunk.usage)
-                } catch { }
+                    const parsed = JSON.parse(raw)
+                    if (parsed.delta !== undefined) onDelta(parsed.delta)
+                } catch(e) {}
             }
         }
+
         onFinish()
     }).catch(err => {
         if (err.name !== 'AbortError') onError(err.message)

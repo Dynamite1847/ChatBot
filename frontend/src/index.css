@@ -23,6 +23,7 @@
   --anthropic: #d97706;
   --google: #059669;
   --openai: #2563eb;
+  --doubao: #8b5cf6;
 
   --danger: #ef4444;
   --success: #22c55e;
@@ -337,6 +338,11 @@ body {
   color: var(--openai);
 }
 
+.provider-badge.doubao {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--doubao);
+}
+
 .chat-header-right {
   display: flex;
   gap: 8px;
@@ -612,6 +618,14 @@ body {
 .message-bubble pre code {
   background: none;
   padding: 0;
+}
+
+.message-bubble pre code.language-thinking {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  white-space: pre-wrap;
+  font-size: 0.95em;
+  opacity: 0.85;
 }
 
 .message-bubble blockquote {
@@ -1078,6 +1092,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .provider-dot.openai {
   background: var(--openai);
+}
+
+.provider-dot.doubao {
+  background: var(--doubao);
 }
 
 .modal-provider-block {

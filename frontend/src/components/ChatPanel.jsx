@@ -7,17 +7,30 @@ import { clearMessages, fetchSession, retryLastMessages, streamChat } from '../u
 export default function ChatPanel() {
     const {
         activeSession, activeSessionId, setActiveSession,
-        isStreaming, setIsStreaming, isThinking, setIsThinking,
-        streamingText, setStreamingText, appendStreamingText,
+        isStreamingMap, setIsStreaming, isThinkingMap, setIsThinking,
+        streamingTextMap, setStreamingText, appendStreamingText,
         config, params,
         lastUsage, setLastUsage, addToast, setEditingText
     } = useStore()
+
+    const isStreaming = activeSessionId ? (isStreamingMap[activeSessionId] || false) : false;
+    const isThinking = activeSessionId ? (isThinkingMap[activeSessionId] || false) : false;
+    const streamingText = activeSessionId ? (streamingTextMap[activeSessionId] || '') : '';
 
     const bottomRef = useRef(null)
     const abortRef = useRef(null)
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        // Only scroll if we are already near the bottom to prevent layout thrashing
+        // or hijacking the user's manual scroll.
+        const scrollNode = bottomRef.current;
+        if (scrollNode) {
+            // Use a minor timeout to prevent scroll blocking the React commit phase
+            const timer = setTimeout(() => {
+                scrollNode.scrollIntoView({ behavior: 'smooth' })
+            }, 50)
+            return () => clearTimeout(timer)
+        }
     }, [activeSession?.messages?.length, streamingText])
 
     const handleClearChat = async () => {
@@ -28,11 +41,15 @@ export default function ChatPanel() {
         setActiveSession(updated)
     }
 
-    // Retry: removes the last user+assistant pair and re-sends the user message
+    // Retry: removes the last user+assistant pair (or just user if assistant failed) and re-sends
     const handleRetry = async () => {
         if (!activeSessionId || isStreaming) return
         try {
-            const result = await retryLastMessages(activeSessionId, 2)
+            const nonSystem = activeSession.messages.filter(m => m.role !== 'system')
+            const endsWithUser = nonSystem.length > 0 && nonSystem[nonSystem.length - 1].role === 'user'
+            const popCount = endsWithUser ? 1 : 2
+
+            const result = await retryLastMessages(activeSessionId, popCount)
             const userMsg = result.last_user_message
             if (!userMsg) { addToast('没有可重试的消息', 'error'); return }
 
@@ -83,32 +100,35 @@ export default function ChatPanel() {
                 context_token_threshold: params.context_token_threshold,
             }
 
-            setIsStreaming(true)
-            setStreamingText('')
-            setIsThinking(false)
+            const currentSessionId = activeSessionId;
+            setIsStreaming(currentSessionId, true)
+            setStreamingText(currentSessionId, '')
+            setIsThinking(currentSessionId, false)
 
             abortRef.current = streamChat(payload, {
                 onDelta: (delta) => {
-                    setIsThinking(false)
-                    appendStreamingText(delta)
+                    setIsThinking(currentSessionId, false)
+                    appendStreamingText(currentSessionId, delta)
                 },
                 onStatus: (status) => {
-                    if (status === 'thinking') setIsThinking(true)
+                    if (status === 'thinking') setIsThinking(currentSessionId, true)
                 },
                 onUsage: (usage) => setLastUsage(usage),
                 onFinish: async () => {
-                    setIsStreaming(false)
-                    setIsThinking(false)
+                    setIsStreaming(currentSessionId, false)
+                    setIsThinking(currentSessionId, false)
                     try {
-                        const updated2 = await fetchSession(activeSessionId)
-                        setActiveSession(updated2)
+                        const updated2 = await fetchSession(currentSessionId)
+                        if (useStore.getState().activeSessionId === currentSessionId) {
+                            setActiveSession(updated2)
+                        }
                     } catch { }
-                    setStreamingText('')
+                    setStreamingText(currentSessionId, '')
                 },
                 onError: (err) => {
-                    setIsStreaming(false)
-                    setIsThinking(false)
-                    setStreamingText('')
+                    setIsStreaming(currentSessionId, false)
+                    setIsThinking(currentSessionId, false)
+                    setStreamingText(currentSessionId, '')
                     addToast('重试失败: ' + err, 'error')
                 }
             })
@@ -117,11 +137,15 @@ export default function ChatPanel() {
         }
     }
 
-    // Edit: remove last user+assistant, put user text back into input for editing
+    // Edit: remove last user+assistant (or just user), put user text back into input for editing
     const handleEdit = async () => {
         if (!activeSessionId || isStreaming) return
         try {
-            const result = await retryLastMessages(activeSessionId, 2)
+            const nonSystem = activeSession.messages.filter(m => m.role !== 'system')
+            const endsWithUser = nonSystem.length > 0 && nonSystem[nonSystem.length - 1].role === 'user'
+            const popCount = endsWithUser ? 1 : 2
+
+            const result = await retryLastMessages(activeSessionId, popCount)
             const userMsg = result.last_user_message
             if (!userMsg) { addToast('没有可编辑的消息', 'error'); return }
             const updated = await fetchSession(activeSessionId)

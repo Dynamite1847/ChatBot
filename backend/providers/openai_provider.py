@@ -13,7 +13,8 @@ class OpenAIProvider(BaseProvider):
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url=base_url,
-            timeout=300.0,  # 5 min timeout for large payloads
+            timeout=1200.0,  # 20 min timeout for large payloads and thinking models
+            max_retries=0,   # Prevent double-spending and background retries
         )
 
     async def stream_chat(
@@ -36,23 +37,51 @@ class OpenAIProvider(BaseProvider):
         payload_kb = len(payload_json.encode("utf-8")) / 1024
         logger.info(f"[OpenAI] Calling model={model}, messages_count={len(all_messages)}, payload_size={payload_kb:.1f}KB")
 
-        usage_data = None
-        stream = await self.client.chat.completions.create(
-            model=model,
-            messages=all_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            frequency_penalty=kwargs.get("frequency_penalty", 0.0),
-            stream=True,
-        )
+        # LinkAPI supports extended output for Claude models (e.g. 8k, 32k), 
+        # but fails silently with 0 chunks if given excessively large values like 100,000.
+        # Cap to a verified safe maximum (32768) to prevent connection drops while 
+        # allowing maximum extended output.
+        if "claude" in model.lower():
+            max_tokens = min(max_tokens, 32768)
+                
+        completion_kwargs = {
+            "model": model,
+            "messages": all_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "frequency_penalty": kwargs.get("frequency_penalty", 0.0),
+            "stream": True,
+        }
+        
+        # Volcengine/Doubao specific parameters
+        if "ark.cn-beijing.volces.com" in str(self.client.base_url):
+            completion_kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+
+        stream = await self.client.chat.completions.create(**completion_kwargs)
+        is_thinking = False
+        has_finished_thinking = False
+
         async for chunk in stream:
             delta = ""
             finish_reason = None
             if chunk.choices:
                 choice = chunk.choices[0]
-                if choice.delta and choice.delta.content:
-                    delta = choice.delta.content
+                reasoning = getattr(choice.delta, "reasoning_content", None)
+                content = getattr(choice.delta, "content", None)
+
+                if reasoning:
+                    if not is_thinking:
+                        delta += "💡 **深度思考过程：**\n```thinking\n"
+                        is_thinking = True
+                    delta += reasoning
+                
+                if content:
+                    if is_thinking and not has_finished_thinking:
+                        delta += "\n```\n\n"
+                        has_finished_thinking = True
+                    delta += content
+
                 finish_reason = choice.finish_reason
             if hasattr(chunk, "usage") and chunk.usage:
                 usage_data = {

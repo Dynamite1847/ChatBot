@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 
 function CopyBtn({ text }) {
     const [copied, setCopied] = useState(false)
@@ -14,7 +14,7 @@ function CopyBtn({ text }) {
     )
 }
 
-export default function MessageItem({ message, isStreaming, streamingText, onRetry, onEdit }) {
+const MessageItem = memo(function MessageItem({ message, isStreaming, streamingText, onRetry, onEdit }) {
     const isUser = message.role === 'user'
     const isAssistant = message.role === 'assistant'
 
@@ -97,4 +97,6 @@ export default function MessageItem({ message, isStreaming, streamingText, onRet
             </div>
         </div>
     )
-}
+})
+
+export default MessageItem;

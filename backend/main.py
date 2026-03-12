@@ -1,11 +1,25 @@
 """FastAPI application entrypoint with all routes."""
 import json
+import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+# ─── Logging Setup ─────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(Path(__file__).parent.parent / "logs" / "backend.log"), encoding="utf-8")
+    ]
+)
+logger = logging.getLogger(__name__)
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from config import load_config, save_config
 from models import (
@@ -20,6 +34,17 @@ from tokens import count_messages_tokens
 from files import process_image, process_document
 
 app = FastAPI(title="AI Client API", version="1.0.0")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url}", exc_info=exc)
+    return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
+
+# Attach our custom formatting to uvicorn loggers
+for logger_name in ("uvicorn.access", "uvicorn.error", "uvicorn"):
+    l = logging.getLogger(logger_name)
+    l.handlers = logging.getLogger().handlers
+    l.propagate = False
 
 app.add_middleware(
     CORSMiddleware,

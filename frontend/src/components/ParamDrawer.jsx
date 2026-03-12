@@ -67,7 +67,8 @@ export default function ParamDrawer() {
                         <option key={p} value={p}>{
                             p === 'anthropic' ? '⬡ Anthropic (Claude)' :
                                 p === 'google' ? '◈ Google (Gemini)' :
-                                    '○ OpenAI'
+                                    p === 'doubao' ? '☁️ Doubao (火山引擎)' :
+                                        p === 'openai' ? '○ DeepSeek / OpenAI' : p
                         }</option>
                     ))}
                 </select>
@@ -116,12 +117,12 @@ export default function ParamDrawer() {
                     <input
                         type="range"
                         min={256}
-                        max={32000}
+                        max={128000}
                         step={256}
                         value={params.max_tokens}
                         onChange={e => setParams({ max_tokens: +e.target.value })}
                     />
-                    <div className="param-row"><span>256</span><span>32000</span></div>
+                    <div className="param-row"><span>256</span><span>128000</span></div>
                 </div>
             </div>
 

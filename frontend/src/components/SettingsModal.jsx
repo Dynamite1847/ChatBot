@@ -36,7 +36,8 @@ export default function SettingsModal() {
     const providerLabels = {
         anthropic: { icon: '⬡', name: 'Anthropic (Claude Sonnet)', color: 'anthropic' },
         google: { icon: '◈', name: 'Google (Gemini)', color: 'google' },
-        openai: { icon: '○', name: 'OpenAI / 兼容接口', color: 'openai' }
+        openai: { icon: '○', name: 'OpenAI / 兼容接口', color: 'openai' },
+        doubao: { icon: '☁️', name: 'Doubao (火山引擎)', color: 'doubao' }
     }
 
     return (
